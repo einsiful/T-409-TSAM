@@ -151,10 +151,16 @@ void closeClient(int clientSocket, fd_set *openSockets, int *maxfds)
 
 }
 
+std::string uppercase(std::string stringToUpper)
+{
+    std::transform(stringToUpper.begin(), stringToUpper.end(), stringToUpper.begin(), ::toupper);
+    return stringToUpper;
+}
+
+
 // Process command from client on the server
 
-void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, 
-                  char *buffer) 
+void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buffer) 
 {
   std::vector<std::string> tokens;
   std::string token;
@@ -170,6 +176,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds,
   if((tokens[0].compare("CONNECT") == 0) && (tokens.size() == 2))
   {
      clients[clientSocket]->name = tokens[1];
+     std::cout << "Client connected: " << tokens[1] << std::endl;
   }
   else if(tokens[0].compare("LEAVE") == 0)
   {
