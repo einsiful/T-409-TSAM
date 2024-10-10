@@ -1,99 +1,138 @@
+//
+// Simple chat client for TSAM-409
+//
+// Command line: ./chat_client 4000 
+//
+// Author: Jacky Mallett (jacky@ru.is)
+//
+#include <stdio.h>
+#include <errno.h>
+#include <stdlib.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <stdio.h>
+#include <netinet/in.h>
+#include <netinet/ip.h>
+#include <netinet/tcp.h>
+#include <netdb.h>
 #include <arpa/inet.h>
+#include <string.h>
+#include <algorithm>
+#include <map>
+#include <vector>
+#include <thread>
+
 #include <iostream>
-#include <unistd.h>
+#include <sstream>
+#include <thread>
+#include <map>
 
-#define BUFFER_SIZE 1024
+// Threaded function for handling responss from server
 
-int main(int argc, char *argv[]) {
-    // Check that the correct number of arguments is supplied
-    if (argc != 3) {
-        std::cerr << "Usage: " << argv[0] << " <server_ip> <port>" << std::endl;
+void listenServer(int serverSocket)
+{
+    int nread;                                  // Bytes read from socket
+    char buffer[1025];                          // Buffer for reading input
+
+    while(true)
+    {
+       memset(buffer, 0, sizeof(buffer));
+       nread = read(serverSocket, buffer, sizeof(buffer));
+
+       if(nread == 0)                      // Server has dropped us
+       {
+          printf("Over and Out\n");
+          exit(0);
+       }
+       else if(nread > 0)
+       {
+          printf("%s\n", buffer);
+       }
+       printf("here\n");
+    }
+}
+
+int main(int argc, char* argv[])
+{
+   struct addrinfo hints, *svr;              // Network host entry for server
+   struct sockaddr_in serv_addr;           // Socket address for server
+   int serverSocket;                         // Socket used for server 
+   int nwrite;                               // No. bytes written to server
+   char buffer[1025];                        // buffer for writing to server
+   bool finished;                   
+   int set = 1;                              // Toggle for setsockopt
+
+   if(argc != 3)
+   {
+        printf("Usage: chat_client <ip  port>\n");
+        printf("Ctrl-C to terminate\n");
         exit(0);
-    }
+   }
 
-    char *ip_string = argv[1];
-    int port = std::stoi(argv[2]);  // Convert port from string to int
+   hints.ai_family   = AF_INET;            // IPv4 only addresses
+   hints.ai_socktype = SOCK_STREAM;
 
-    int sock;
+   memset(&hints,   0, sizeof(hints));
 
-    // Create TCP socket
-    if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        perror("Could not create socket");
-        exit(0);
-    }
+   if(getaddrinfo(argv[1], argv[2], &hints, &svr) != 0)
+   {
+       perror("getaddrinfo failed: ");
+       exit(0);
+   }
 
-    // Create the server address
-    struct sockaddr_in server_addr;
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(port);
+   struct hostent *server;
+   server = gethostbyname(argv[1]);
 
-    if (inet_pton(AF_INET, ip_string, &server_addr.sin_addr) < 1) {
-        std::cerr << "Invalid IP address format" << std::endl;
-        exit(0);
-    }
+   bzero((char *) &serv_addr, sizeof(serv_addr));
+   serv_addr.sin_family = AF_INET;
+   bcopy((char *)server->h_addr,
+      (char *)&serv_addr.sin_addr.s_addr,
+      server->h_length);
+   serv_addr.sin_port = htons(atoi(argv[2]));
 
-    // Connect to the server
-    if (connect(sock, (const sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
-        perror("Could not connect");
-        exit(0);
-    }
+   serverSocket = socket(AF_INET, SOCK_STREAM, 0);
 
-    char buffer[BUFFER_SIZE];
+   // Turn on SO_REUSEADDR to allow socket to be quickly reused after 
+   // program exit.
 
-    while (true) {
-        // Read command from keyboard input
-        std::string command;
-        std::cout << "Enter command to send to server (or type 'exit' to quit): ";
-        std::getline(std::cin, command);
+   if(setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &set, sizeof(set)) < 0)
+   {
+       printf("Failed to set SO_REUSEADDR for port %s\n", argv[2]);
+       perror("setsockopt failed: ");
+   }
 
-        if (command == "exit") {
-            break;  // Exit the loop and terminate the client
-        }
+   
+   if(connect(serverSocket, (struct sockaddr *)&serv_addr, sizeof(serv_addr) )< 0)
+   {
+       // EINPROGRESS means that the connection is still being setup. Typically this
+       // only occurs with non-blocking sockets. (The serverSocket above is explicitly
+       // not in non-blocking mode, so this check here is just an example of how to
+       // handle this properly.)
+       if(errno != EINPROGRESS)
+       {
+         printf("Failed to open socket to server: %s\n", argv[1]);
+         perror("Connect failed: ");
+         exit(0);
+       }
+   }
 
-        // Append SYS prefix to the command
-        std::string sys_command = "SYS " + command;
+    // Listen and print replies from server
+   std::thread serverThread(listenServer, serverSocket);
 
-        // Send the command to the server
-        int n = send(sock, sys_command.c_str(), sys_command.length() + 1, 0);
-        if (n < sys_command.length() + 1) {
-            std::cerr << "Error: Could not send the full command to the server!" << std::endl;
-            continue;
-        }
+   finished = false;
+   while(!finished)
+   {
+       bzero(buffer, sizeof(buffer));
 
-        // Receive and print the result from the server
-        while (true) {
-            memset(buffer, 0, BUFFER_SIZE);
-            int bytes_received = recv(sock, buffer, BUFFER_SIZE - 1, 0);
+       fgets(buffer, sizeof(buffer), stdin);
 
-            if (bytes_received < 0) {
-                perror("Error receiving data from server");
-                break;
-            } else if (bytes_received == 0) {
-                // Server closed the connection
-                std::cout << "Server closed the connection." << std::endl;
-                close(sock);
-                exit(0);
-            }
+       nwrite = send(serverSocket, buffer, strlen(buffer),0);
 
-            buffer[bytes_received] = '\0';  // Null-terminate the received data
-            std::cout << buffer;
+       if(nwrite  == -1)
+       {
+           perror("send() to server failed: ");
+           finished = true;
+       }
 
-            // Check if we received the end of the output
-            if (bytes_received < BUFFER_SIZE - 1) {
-                break;  // We have received the full response
-            }
-        }
-        std::cout << std::endl;  // Print a newline after the command output
-    }
-
-    // Close the socket
-    if (close(sock) < 0) {
-        perror("Close failed");
-        exit(0);
-    }
-
-    return 0;
+   }
 }
