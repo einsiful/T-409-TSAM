@@ -165,6 +165,8 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds,
   while(stream >> token)
       tokens.push_back(token);
 
+    std::cout << "tokens" << tokens[0] << std::endl;
+
   if((tokens[0].compare("CONNECT") == 0) && (tokens.size() == 2))
   {
      clients[clientSocket]->name = tokens[1];
