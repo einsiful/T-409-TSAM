@@ -8,3 +8,7 @@ tsamgroup30: tsamgroup30.cpp
 
 clean:
 	rm -f client tsamgroup30
+
+# send:
+# 	scp src/* danieli22_2024@130.208.246.249:~/botnet/src
+# 	scp Makefile danieli22_2024@130.208.246.249:~/botnet
