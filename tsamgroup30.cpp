@@ -218,7 +218,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds,
           }
       }
   }
-  else if (tokens[0].compare("HELO") == 0 && tokens.size() == 2) {
+  else if (tokens[0].compare("HELO") == 0) {
     std::string response = "SERVERS,";
     send(clientSocket, response.c_str(), response.length(), 0);
     }
