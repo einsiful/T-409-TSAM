@@ -256,6 +256,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
     std::string groupId = tokens[1];  // Extract the group ID (e.g., "aaa")
 
     // Build the response
+    std::string answer = "HELO was recgonized";
     std::string response = "SERVERS," + groupId;
 
     // Send the response to the client
