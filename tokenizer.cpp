@@ -2,6 +2,7 @@
 #include <iostream>
 #include <sstream>
 #include <sys/socket.h>
+#include <algorithm>
 
 std::vector<std::string> tokenizer(std::string thingToParse, char splitter){
 
