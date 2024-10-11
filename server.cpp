@@ -251,10 +251,22 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
           }
       }
   }
-  else if (tokens[0].compare("HELO") == 0) {
-    std::string response = "SERVERS,";
+  else if (tokens.size() >= 2 && tokens[0] == "HELO") {
+    // Ensure the command has enough tokens and the first token is "HELO"
+    std::string groupId = tokens[1];  // Extract the group ID (e.g., "aaa")
+
+    // Build the response
+    std::string response = "SERVERS," + groupId;
+
+    // Send the response to the client
     send(clientSocket, response.c_str(), response.length(), 0);
-    logCommand("HELO from:" + response);
+
+    // Log the HELO command and the group ID
+    logCommand("HELO from: " + groupId);
+
+    // Print for debugging
+    std::cout << "Command is: HELO" << std::endl;
+    std::cout << "Group ID: " << groupId << std::endl;
 }
   else
   {
