@@ -260,6 +260,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
   {
       std::cout << "Unknown command from client:" << buffer << std::endl;
       std::cout << "Command is:" << tokens[0] << std::endl;
+      std::cout << "token 2 is:" << tokens[1] << std::endl;
       std::cout << "Length is:" << tokens.size() << std::endl;
       logCommand("Unknown command from client:" + std::string(buffer));
   }
