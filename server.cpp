@@ -5,6 +5,7 @@
 //
 // Author: Jacky Mallett (jacky@ru.is)
 //
+#include <fstream>
 #include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -63,10 +64,19 @@ class Client
 // (indexed on socket no.) sacrificing memory for speed.
 
 std::map<int, Client*> clients; // Lookup table for per Client information
+std::map<std::string, std::vector<std::string>> messageCache;
 
 // Open socket for specified port.
 //
 // Returns -1 if unable to create the socket for any reason.
+
+// Logging function
+void logCommand(const std::string& logMessage) {
+    std::ofstream logFile("server.log", std::ios::app);
+    time_t now = time(0);
+    logFile << "Timestamp: " << ctime(&now) << "Command: " << logMessage << std::endl;
+    logFile.close();
+}
 
 int open_socket(int portno)
 {
@@ -179,6 +189,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
   {
      clients[clientSocket]->name = tokens[1];
      std::cout << "Client connected: " << tokens[1] << std::endl;
+     logCommand("CONNECT " + tokens[1]);
   }
   else if(tokens[0].compare("LEAVE") == 0)
   {
@@ -187,6 +198,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
       // select() detects the OS has torn down the connection.
  
       closeClient(clientSocket, openSockets, maxfds);
+      logCommand("LEAVE " + std::to_string(clientSocket));
   }
   else if(tokens[0].compare("WHO") == 0)
   {
@@ -201,8 +213,10 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
      // Reducing the msg length by 1 loses the excess "," - which
      // granted is totally cheating.
      send(clientSocket, msg.c_str(), msg.length()-1, 0);
+     logCommand("WHO request:" + msg);
 
   }
+
   // This is slightly fragile, since it's relying on the order
   // of evaluation of the if statement.
   else if((tokens[0].compare("MSG") == 0) && (tokens[1].compare("ALL") == 0))
@@ -236,6 +250,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
   else if (tokens[0].compare("HELO") == 0 && tokens.size() == 2) {
     std::string response = "SERVERS,";
     send(clientSocket, response.c_str(), response.length(), 0);
+    logCommand("HELO from:" + response);
 }
   else
   {
