@@ -1,14 +1,11 @@
-// Description: This file contains the declaration of the split function
+// tokens.h
 #ifndef TOKENS_H
 #define TOKENS_H
 
 #include <vector>
-#include <iostream>
-#include <sstream>
-#include <sys/socket.h>
+#include <string>
 
-// Declaration of the split function
+// Declaration of the tokenizer function
 std::vector<std::string> tokenizer(const std::string toParse, char splitter);
-std::vector<std::string> messageSeparator(char *buffer, int sock);
 
 #endif  // TOKENS_H

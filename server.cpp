@@ -174,8 +174,10 @@ std::string uppercase(std::string stringToUpper)
 
 void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buffer) 
 {
-  std::vector<std::string> tokens;
-  std::string token;
+    std::string command(buffer);
+    std::string token;
+    std::vector<std::string> tokens = tokenizer(command, ',');
+
 
   // Split command from client into tokens for parsing
   std::stringstream stream(buffer);
