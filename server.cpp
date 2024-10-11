@@ -30,6 +30,8 @@
 
 #include <unistd.h>
 
+#include "tokens.h"
+
 std::string groupId = "30";
 
 std::string serverGroupId = "A5_" + groupId;
@@ -255,6 +257,8 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
   else
   {
       std::cout << "Unknown command from client:" << buffer << std::endl;
+      std::vector<std::string> tokens = tokenizer(buffer, ',');
+      std::string msg = "Unknown command: " + tokens[0];
       logCommand("Unknown command from client:" + std::string(buffer));
   }
      
