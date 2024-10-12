@@ -239,13 +239,17 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
             std::cout << "Received: " << gustabuffer << std::endl;
         }
 
-        int count = 0;
+        int countSOH = 0;
+        int countEOT = 0;
 
         // TODO: extract from the received message how many SOH and EOT there are
         for (char c : gustabuffer) {
         if (c == SOH) {
-            count++;
-            std::cout << "SOH found! Count is now: " << count << std::endl;
+            countSOH++;
+            std::cout << "SOH found! Count is now: " << countSOH << std::endl;
+        } else if (c == EOT) {
+            countEOT++;
+            std::cout << "EOT found! Count is now: " << countEOT << std::endl;
         }
 
     }
