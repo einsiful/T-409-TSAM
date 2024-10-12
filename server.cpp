@@ -169,6 +169,8 @@ std::string uppercase(std::string stringToUpper)
     return stringToUpper;
 }
 
+// TODO: gera server password protected
+
 
 // Process command from client on the server
 
@@ -237,6 +239,16 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
             std::cout << "Received: " << gustabuffer << std::endl;
         }
 
+        int count = 0;
+
+        // TODO: extract from the received message how many SOH and EOT there are
+        for (char c : gustabuffer) {
+        if (c == SOH) {
+            count++;
+        }
+
+        std::cout << "Number of SOH (0x01) instances: " << count << std::endl;
+    }
     } 
     else {
         // Handle failed connections or unknown commands
