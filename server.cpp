@@ -169,9 +169,10 @@ std::string uppercase(std::string stringToUpper)
     return stringToUpper;
 }
 
-std::map<std::string, std::vector<std::string>> fetch_messages(std::string user)
+std::map<std::string, std::vector<std::string>> fetch_messages(Client *ClientSocket, char *buffer)
 {
     std::map<std::string, std::vector<std::string>> messages;
+    std::string user = ClientSocket->name;
     for(auto const& pair : messageCache)
     {
         if(pair.first == user)
@@ -237,10 +238,6 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
         // Receive response from the server and process it
         char recvBuffer[BUFFER_SIZE];
         int received = recv(connectSock, recvBuffer, sizeof(recvBuffer), 0);
-        if (received > 0) {
-            std::string receivedMsg(recvBuffer, received);
-            std::vector<std::string> responseTokens = tokenizer(receivedMsg, ',');
-        }
 
         close(connectSock);  // Close after message processing
     }
