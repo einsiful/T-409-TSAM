@@ -246,7 +246,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
         for (char c : gustabuffer) {
         if (c == SOH) {
             countSOH++;
-            std::cout << "SOH found! Count is now: " << countSOH << std::endl;
+            std::cout << "SOH found!!! Count is now: " << countSOH << std::endl;
         } else if (c == EOT) {
             countEOT++;
             std::cout << "EOT found! Count is now: " << countEOT << std::endl;
