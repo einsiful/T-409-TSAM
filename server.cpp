@@ -44,8 +44,8 @@ std::string serverGroupId = "A5_" + groupId;
 
 #define BACKLOG  5          // Allowed length of queue of waiting connections
 #define BUFFER_SIZE 1024
-#define SOH 0x01  // Start of Header (SOH)
-#define EOT 0x04  // End of Transmission (EOT)
+char SOH = 0x01;  // Start of Header (SOH)
+char EOT = 0x04;  // End of Transmission (EOT)
 
 // Simple class for handling connections from clients.
 //
