@@ -226,8 +226,16 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
         std::string eot(1, EOT);  // EOT (0x04) character
         std::string command = soh + "HELO,A5_30" + eot;
 
+
         // Send command with SOH and EOT delimiters
-        send(clientSocket, command.c_str(), command.size(), 0);
+        send(connectSock, command.c_str(), command.size(), 0);
+
+        char gustabuffer[1025];
+        int recived = recv(connectSock, gustabuffer, sizeof(gustabuffer), 0);
+
+        if (recived > 0) {
+            std::cout << "Received: " << gustabuffer << std::endl;
+        }
 
     } 
     else {
