@@ -32,9 +32,6 @@
 
 #include "tokenizer.h"
 
-std::string groupId = "30";
-
-std::string serverGroupId = "A5_" + groupId;
 
 // fix SOCK_NONBLOCK for OSX
 #ifndef SOCK_NONBLOCK
@@ -181,21 +178,11 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
     std::string token;
     std::vector<std::string> tokens = tokenizer(command, ',');
 
-
-  // Split command from client into tokens for parsing
-  std::stringstream stream(buffer);
-
-  while(stream >> token)
-      tokens.push_back(token);
-
-    // Process command
-
-    
-
-if ((tokens[0].compare("CONNECT") == 0) && (tokens.size() == 4)) 
+    // Check if the CONNECT command is received with the right number of arguments
+    if ((tokens[0].compare("CONNECT") == 0) && (tokens.size() == 3))  // Fix the size to 3 (CONNECT, IP, PORT)
     {
-        std::string serverIp = tokens[1];
-        int serverPort = std::stoi(tokens[2]);
+        std::string serverIp = tokens[1];   // IP of the server to connect to
+        int serverPort = std::stoi(tokens[2]);  // Convert port to integer
 
         // Create a new socket to connect to the given server
         int connectSock = socket(AF_INET, SOCK_STREAM, 0);
@@ -227,106 +214,24 @@ if ((tokens[0].compare("CONNECT") == 0) && (tokens.size() == 4))
             return;
         }
 
-        // Connection successful, log and optionally notify the client
-        std::cout << "Connected to server: " << serverIp << ":" << serverPort << std::endl;
-        logCommand("CONNECTED to server: " + serverIp + ":" + std::to_string(serverPort));
-        std::string response = "Connected to " + serverIp + ":" + std::to_string(serverPort);
-        send(clientSocket, response.c_str(), response.length(), 0);
+        // If connection is successful, store server info (using a placeholder for `serverInfo`)
+        std::cout << "Successfully connected to " << serverIp << ":" << serverPort << std::endl;
 
-        // Close the connection after the test connection (or keep it open if required)
-        close(connectSock);
-    }
-  else if(tokens[0].compare("LEAVE") == 0)
-  {
-      // Close the socket, and leave the socket handling
-      // code to deal with tidying up clients etc. when
-      // select() detects the OS has torn down the connection.
- 
-      closeClient(clientSocket, openSockets, maxfds);
-      logCommand("LEAVE " + std::to_string(clientSocket));
-  }
-  else if(tokens[0].compare("WHO") == 0)
-  {
-     std::cout << "Who is logged on" << std::endl;
-     std::string msg;
+        // Log connection success
+        logCommand("Successfully connected to " + serverIp + ":" + std::to_string(serverPort));
 
-     for(auto const& names : clients)
-     {
-        msg += names.second->name + ",";
-
-     }
-     // Reducing the msg length by 1 loses the excess "," - which
-     // granted is totally cheating.
-     send(clientSocket, msg.c_str(), msg.length()-1, 0);
-     logCommand("WHO request:" + msg);
-
-  }
-
-  // This is slightly fragile, since it's relying on the order
-  // of evaluation of the if statement.
-  else if((tokens[0].compare("MSG") == 0) && (tokens[1].compare("ALL") == 0))
-  {
-      std::string msg;
-      for(auto i = tokens.begin()+2;i != tokens.end();i++) 
-      {
-          msg += *i + " ";
-      }
-
-      for(auto const& pair : clients)
-      {
-          send(pair.second->sock, msg.c_str(), msg.length(),0);
-      }
-  }
-  else if(tokens[0].compare("MSG") == 0)
-  {
-      for(auto const& pair : clients)
-      {
-          if(pair.second->name.compare(tokens[1]) == 0)
-          {
-              std::string msg;
-              for(auto i = tokens.begin()+2;i != tokens.end();i++) 
-              {
-                  msg += *i + " ";
-              }
-              send(pair.second->sock, msg.c_str(), msg.length(),0);
-          }
-      }
-  }
-  else
-  {
-      std::cout << "Unknown command from client:" << buffer << std::endl;
-      std::cout << "Command is:" << tokens[0] << std::endl;
-      std::cout << "token 2 is:" << tokens[1] << std::endl;
-      std::cout << "Length is:" << tokens.size() << std::endl;
-      logCommand("Unknown command from client:" + std::string(buffer));
-  }
-     
-}
-
-void handleClient(int clientSocket) {
-    char buffer[BUFFER_SIZE];
-    memset(buffer, 0, sizeof(buffer));
-
-    if (recv(clientSocket, buffer, sizeof(buffer), 0) > 0) {
-        std::string command(buffer);
-
-        if (command[0] == SOH && command.back() == EOT) {
-            // Strip SOH and EOT
-            command = command.substr(1, command.size() - 2);
-            std::vector<std::string> tokens = tokenizer(command, ',');
-
-            if (tokens[0] == "HELO") {
-                std::string response = "SERVERS,A5_30,127.0.0.1,4044;";
-                send(clientSocket, response.c_str(), response.length(), 0);
-                logCommand("HELO command received");
-            }
-            // Add other command handling
-        }
-        else {
-            std::cerr << "Invalid message format received." << std::endl;
-        }
+        // Respond to the client that connection is successful
+        std::string response = "Connected to server at " + serverIp + ":" + std::to_string(serverPort) + "\n";
+        send(clientSocket, response.c_str(), response.size(), 0);
+    } 
+    else {
+        // Handle failed connections or unknown commands
+        char response[256] = "Unknown or failed connection command.\n";
+        send(clientSocket, response, sizeof(response), 0);
+        logCommand("CONNECT command failed or was unknown.");
     }
 }
+
 
 int main(int argc, char* argv[])
 {
