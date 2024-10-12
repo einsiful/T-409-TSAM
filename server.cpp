@@ -224,7 +224,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
         std::string response = "Connected to server at " + serverIp + ":" + std::to_string(serverPort) + "\n";
         std::string soh(1, SOH);  // SOH (0x01) character
         std::string eot(1, EOT);  // EOT (0x04) character
-        std::string command = soh + "CONNECT," + serverIp + "," + std::to_string(serverPort) + eot;
+        std::string command = soh + "HELO,A5_30" + eot;
 
         // Send command with SOH and EOT delimiters
         send(clientSocket, command.c_str(), command.size(), 0);
