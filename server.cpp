@@ -189,7 +189,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 
     
 
-if ((tokens[0].compare("CONNECT") == 0) && (tokens.size() == 3)) 
+if ((tokens[0].compare("CONNECT") == 0) && (tokens.size() == 4)) 
     {
         std::string serverIp = tokens[1];
         int serverPort = std::stoi(tokens[2]);
