@@ -169,44 +169,17 @@ std::string uppercase(std::string stringToUpper)
     return stringToUpper;
 }
 
-std::map<std::string, std::vector<std::string>> all_msgs;  // Store all messages
-
-// Function to process multiple SOH and EOT delimited messages in a buffer
-void processMessage(int sock, const std::string& buffer) {
-    size_t sohPos = 0;
-    size_t eotPos = 0;
-    
-    // Loop through the buffer and find multiple SOH-EOT pairs
-    while ((sohPos = buffer.find(SOH, eotPos)) != std::string::npos) {
-        eotPos = buffer.find(EOT, sohPos);
-        if (eotPos == std::string::npos) {
-            // If no EOT is found after SOH, we stop processing
-            break;
-        }
-
-        // Extract the message content between SOH and EOT
-        std::string content = buffer.substr(sohPos + 1, eotPos - sohPos - 1);
-        
-        // Store the message in all_msgs for debugging or further processing
-        all_msgs["received_messages"].push_back(content);
-        
-        // Log or print the message content
-        std::cout << "Received message: " << content << std::endl;
-
-        // Move to the next part of the buffer
-        eotPos++;  // Move past the current EOT for next search
-    }
-}
 
 // Process command from client on the server
 
 void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buffer) 
 {
     std::string command(buffer);
+    std::string token;
     std::vector<std::string> tokens = tokenizer(command, ',');
 
     // Check if the CONNECT command is received with the right number of arguments
-    if ((tokens[0].compare("CONNECT") == 0) && (tokens.size() == 3)) 
+    if ((tokens[0].compare("CONNECT") == 0) && (tokens.size() == 3))  // Fix the size to 3 (CONNECT, IP, PORT)
     {
         std::string serverIp = tokens[1];   // IP of the server to connect to
         int serverPort = std::stoi(tokens[2]);  // Convert port to integer
@@ -241,25 +214,30 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
             return;
         }
 
-        // Log successful connection
-        logCommand("Successfully connected to " + serverIp + ":" + std::to_string(serverPort));
-        
-        // Send HELO with SOH and EOT
-        std::string soh(1, SOH);
-        std::string eot(1, EOT);
-        std::string heloMsg = soh + "HELO,A5_30" + eot;
-        send(connectSock, heloMsg.c_str(), heloMsg.size(), 0);
+        // If connection is successful, store server info (using a placeholder for `serverInfo`)
+        std::cout << "Successfully connected to " << serverIp << ":" << serverPort << std::endl;
 
-        // Receive response from the server and process it
-        char recvBuffer[BUFFER_SIZE];
-        int received = recv(connectSock, recvBuffer, sizeof(recvBuffer), 0);
-        if (received > 0) {
-            std::string receivedMsg(recvBuffer, received);
-            processMessage(connectSock, receivedMsg);  // Process SOH, EOT, and store in all_msgs
+        // Log connection success
+        logCommand("Successfully connected to " + serverIp + ":" + std::to_string(serverPort));
+
+        // Respond to the client that connection is successful
+        std::string response = "Connected to server at " + serverIp + ":" + std::to_string(serverPort) + "\n";
+        std::string soh(1, SOH);  // SOH (0x01) character
+        std::string eot(1, EOT);  // EOT (0x04) character
+        std::string command = soh + "HELO,A5_30" + eot;
+
+
+        // Send command with SOH and EOT delimiters
+        send(connectSock, command.c_str(), command.size(), 0);
+
+        char gustabuffer[1025];
+        int recived = recv(connectSock, gustabuffer, sizeof(gustabuffer), 0);
+
+        if (recived > 0) {
+            std::cout << "Received: " << gustabuffer << std::endl;
         }
 
-        close(connectSock);  // Close after message processing
-    }
+    } 
     else {
         // Handle failed connections or unknown commands
         char response[256] = "Unknown or failed connection command.\n";
