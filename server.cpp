@@ -222,7 +222,13 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 
         // Respond to the client that connection is successful
         std::string response = "Connected to server at " + serverIp + ":" + std::to_string(serverPort) + "\n";
-        send(clientSocket, response.c_str(), response.size(), 0);
+        std::string soh(1, SOH);  // SOH (0x01) character
+        std::string eot(1, EOT);  // EOT (0x04) character
+        std::string command = soh + "CONNECT," + serverIp + "," + std::to_string(serverPort) + eot;
+
+        // Send command with SOH and EOT delimiters
+        send(clientSocket, command.c_str(), command.size(), 0);
+
     } 
     else {
         // Handle failed connections or unknown commands
