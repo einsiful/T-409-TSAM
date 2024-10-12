@@ -189,12 +189,50 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 
     
 
-  if((tokens[0].compare("CONNECT") == 0) && (tokens.size() == 2))
-  {
-     clients[clientSocket]->name = tokens[1];
-     std::cout << "Client connected: " << tokens[1] << std::endl;
-     logCommand("CONNECT " + tokens[1]);
-  }
+if ((tokens[0].compare("CONNECT") == 0) && (tokens.size() == 3)) 
+    {
+        std::string serverIp = tokens[1];
+        int serverPort = std::stoi(tokens[2]);
+
+        // Create a new socket to connect to the given server
+        int connectSock = socket(AF_INET, SOCK_STREAM, 0);
+        if (connectSock < 0) {
+            perror("Failed to create socket");
+            logCommand("CONNECT failed to create socket");
+            return;
+        }
+
+        // Setup server address struct
+        struct sockaddr_in serverAddr;
+        memset(&serverAddr, 0, sizeof(serverAddr));
+        serverAddr.sin_family = AF_INET;
+        serverAddr.sin_port = htons(serverPort);
+
+        // Convert IP address to binary form
+        if (inet_pton(AF_INET, serverIp.c_str(), &serverAddr.sin_addr) <= 0) {
+            perror("Invalid IP address");
+            logCommand("CONNECT invalid IP address: " + serverIp);
+            close(connectSock);
+            return;
+        }
+
+        // Attempt to connect to the server
+        if (connect(connectSock, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0) {
+            perror("Failed to connect to server");
+            logCommand("CONNECT failed to connect to server: " + serverIp + ":" + std::to_string(serverPort));
+            close(connectSock);
+            return;
+        }
+
+        // Connection successful, log and optionally notify the client
+        std::cout << "Connected to server: " << serverIp << ":" << serverPort << std::endl;
+        logCommand("CONNECTED to server: " + serverIp + ":" + std::to_string(serverPort));
+        std::string response = "Connected to " + serverIp + ":" + std::to_string(serverPort);
+        send(clientSocket, response.c_str(), response.length(), 0);
+
+        // Close the connection after the test connection (or keep it open if required)
+        close(connectSock);
+    }
   else if(tokens[0].compare("LEAVE") == 0)
   {
       // Close the socket, and leave the socket handling
@@ -251,24 +289,6 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
           }
       }
   }
-  else if (tokens.size() >= 2 && tokens[0] == "HELO") {
-    // Ensure the command has enough tokens and the first token is "HELO"
-    std::string groupId = tokens[1];  // Extract the group ID (e.g., "aaa")
-
-    // Build the response
-    std::string answer = "HELO was recgonized";
-    std::string response = "SERVERS," + groupId;
-
-    // Send the response to the client
-    send(clientSocket, response.c_str(), response.length(), 0);
-
-    // Log the HELO command and the group ID
-    logCommand("HELO from: " + groupId);
-
-    // Print for debugging
-    std::cout << "Command is: HELO" << std::endl;
-    std::cout << "Group ID: " << groupId << std::endl;
-}
   else
   {
       std::cout << "Unknown command from client:" << buffer << std::endl;
