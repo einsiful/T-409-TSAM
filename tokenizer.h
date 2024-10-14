@@ -8,6 +8,7 @@
 
 
 std::vector<std::string> tokenizer(std::string thingToParse, char splitter);
+std::vector<std::string> messageSeperator(char *buffer, int sock);
 
 
 #endif //TSAM_A5_30_TOKENIZER_H

@@ -22,6 +22,7 @@
 #include <map>
 #include <vector>
 #include <list>
+#include <iomanip>  // For std::hex and formatting
 
 #include <iostream>
 #include <sstream>
@@ -169,6 +170,33 @@ std::string uppercase(std::string stringToUpper)
     return stringToUpper;
 }
 
+// TODO: LAGA!!!
+std::vector<std::vector<std::string>> cmdParser(char* buffer, int clientSocket){
+    std::vector<std::string> cmd_tokens;
+    std::string bufferStr = buffer;
+    cmd_tokens = messageSeperator(buffer, clientSocket);
+
+    for (auto &cmd_token : cmd_tokens) {
+        std::cout << "Cmd token:" << cmd_token << std::endl;
+    }
+
+    std::vector<std::vector<std::string>> all_cmds;
+    for (auto &cmd_token : cmd_tokens) {
+        std::vector<std::string> tokens;
+        std::vector<std::string> v_token;
+        v_token.push_back(cmd_token);
+        tokens = tokenizer(cmd_token, ',');
+        all_cmds.push_back(tokens);
+    }
+    return all_cmds;
+}
+
+// void fetch_messages(){
+
+// }
+
+// std::map<std::string, std::vector<std::string>> fetch_messages(Client ClientSocket, charbuffer)
+
 // TODO: gera server password protected
 
 
@@ -239,20 +267,10 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
             std::cout << "Received: " << gustabuffer << std::endl;
         }
 
-        int countSOH = 0;
-        int countEOT = 0;
 
-        // TODO: extract from the received message how many SOH and EOT there are
-        for (char c : gustabuffer) {
-        if (c == SOH) {
-            countSOH++;
-            std::cout << "SOH found!!! Count is now: " << countSOH << std::endl;
-        } else if (c == EOT) {
-            countEOT++;
-            std::cout << "EOT found! Count is now: " << countEOT << std::endl;
-        }
 
-    }
+
+
     } 
     else {
         // Handle failed connections or unknown commands
