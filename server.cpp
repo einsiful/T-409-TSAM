@@ -223,6 +223,8 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
         // Respond to the client that connection is successful
         std::string response = "Connected to server at " + serverIp + ":" + std::to_string(serverPort) + "\n";
         send(clientSocket, response.c_str(), response.size(), 0);
+
+        recv(connectSock, buffer, sizeof(buffer), 0);
     } 
     else {
         // Handle failed connections or unknown commands
