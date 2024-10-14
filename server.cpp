@@ -295,9 +295,10 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
                 currentVector.clear();
                 inDataSection = false;  // End the data section
             }
-        } 
-        else if (c == '0') {
-            // Ignore null characters
+        }
+        else if (c == 0x00) {
+            // Skip null characters
+            continue;
         }
         else {
             // If it's not SOH or EOT, we assume it's part of the data, so add it to the current vector
