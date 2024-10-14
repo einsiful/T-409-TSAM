@@ -272,7 +272,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
     std::vector<std::vector<char>> vectorOfVectors;  // Vector of vectors to hold each chunk between SOH and EOT
     std::vector<char> currentVector;                 // Current vector to hold characters between SOH and EOT
 
-    for (char c : gustabuffer) {
+    for (char &c : gustabuffer) {
         if (c == SOH) {
             countSOH++;
             std::cout << "SOH found!!! Count is now: " << countSOH << std::endl;
