@@ -260,7 +260,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
         // Send command with SOH and EOT delimiters
         send(connectSock, command.c_str(), command.size(), 0);
 
-        char gustabuffer[1025];
+        char gustabuffer[5000];
         int recived = recv(connectSock, gustabuffer, sizeof(gustabuffer), 0);
 
         if (recived > 0) {
@@ -296,10 +296,6 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
                 inDataSection = false;  // End the data section
             }
         }
-        else if (c == 0x00) {
-            // Skip null characters
-            continue;
-        }
         else {
             // If it's not SOH or EOT, we assume it's part of the data, so add it to the current vector
             if (inDataSection) {
@@ -330,7 +326,7 @@ if (!currentVector.empty()) {
     } 
     else {
         // Handle failed connections or unknown commands
-        char response[1025] = "Unknown or failed connection command.\n";
+        char response[5000] = "Unknown or failed connection command.\n";
         send(clientSocket, response, sizeof(response), 0);
         logCommand("CONNECT command failed or was unknown.");
     }
