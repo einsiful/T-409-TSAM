@@ -22,7 +22,6 @@
 #include <map>
 #include <vector>
 #include <list>
-#include <iomanip>  // For std::hex and formatting
 
 #include <iostream>
 #include <sstream>
@@ -170,35 +169,6 @@ std::string uppercase(std::string stringToUpper)
     return stringToUpper;
 }
 
-// TODO: LAGA!!!
-std::vector<std::vector<std::string>> cmdParser(char* buffer, int clientSocket){
-    std::vector<std::string> cmd_tokens;
-    std::string bufferStr = buffer;
-    cmd_tokens = messageSeperator(buffer, clientSocket);
-
-    for (auto &cmd_token : cmd_tokens) {
-        std::cout << "Cmd token:" << cmd_token << std::endl;
-    }
-
-    std::vector<std::vector<std::string>> all_cmds;
-    for (auto &cmd_token : cmd_tokens) {
-        std::vector<std::string> tokens;
-        std::vector<std::string> v_token;
-        v_token.push_back(cmd_token);
-        tokens = tokenizer(cmd_token, ',');
-        all_cmds.push_back(tokens);
-    }
-    return all_cmds;
-}
-
-// void fetch_messages(){
-
-// }
-
-// std::map<std::string, std::vector<std::string>> fetch_messages(Client ClientSocket, charbuffer)
-
-// TODO: gera server password protected
-
 
 // Process command from client on the server
 
@@ -267,60 +237,10 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
             std::cout << "Received: " << gustabuffer << std::endl;
         }
 
-    int countSOH = 0, countEOT = 0;
-
-    std::vector<std::vector<char>> vectorOfVectors;  // Vector of vectors to hold each chunk between SOH and EOT
-    std::vector<char> currentVector;                 // Current vector to hold characters between SOH and EOT
-
-    for (char c : gustabuffer) {
-        if (c == SOH) {
-            countSOH++;
-            std::cout << "SOH found!!! Count is now: " << countSOH << std::endl;
-            
-            // When SOH is found, start a new vector for storing data
-            if (!currentVector.empty()) {
-                // Add the previous vector to vector of vectors before starting a new one (if it's not empty)
-                vectorOfVectors.push_back(currentVector);
-                currentVector.clear();  // Clear the current vector to start fresh
-            }
-        } 
-        else if (c == EOT) {
-            countEOT++;
-            std::cout << "EOT found! Count is now: " << countEOT << std::endl;
-
-            // When EOT is found, finalize the current vector and add it to the vector of vectors
-            vectorOfVectors.push_back(currentVector);
-            currentVector.clear();  // Clear the current vector after saving
-        } 
-        else {
-            // If it's not SOH or EOT, we assume it's part of the data, so add it to the current vector
-            currentVector.push_back(c);
-        }
-    }
-
-    // Handle the case where the last vector might not be followed by an EOT
-    if (!currentVector.empty()) {
-        vectorOfVectors.push_back(currentVector);
-    }
-
-    // Output the result for verification
-    std::cout << "Total vectors created: " << vectorOfVectors.size() << std::endl;
-
-    // Print the content of each vector in hexadecimal
-    for (size_t i = 0; i < vectorOfVectors.size(); ++i) {
-        std::cout << "Vector " << i + 1 << " in Hex: ";
-        for (char ch : vectorOfVectors[i]) {
-            // Print each character as a hexadecimal value
-            std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)(unsigned char)ch << " ";
-        }
-        std::cout << std::endl;
-    }
-
-
     } 
     else {
         // Handle failed connections or unknown commands
-        char response[5000] = "Unknown or failed connection command.\n";
+        char response[256] = "Unknown or failed connection command.\n";
         send(clientSocket, response, sizeof(response), 0);
         logCommand("CONNECT command failed or was unknown.");
     }
