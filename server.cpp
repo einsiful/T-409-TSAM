@@ -274,54 +274,54 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
     std::vector<char> currentVector;                 // Current vector to hold characters between SOH and EOT
     bool inDataSection = false;       // Flag to indicate if we are in a data section
 
-    for (char c : gustabuffer) {
-        if (c == SOH) {
-            countSOH++;
-            std::cout << "SOH found!!! Count is now: " << countSOH << std::endl;
+//     for (char c : gustabuffer) {
+//         if (c == SOH) {
+//             countSOH++;
+//             std::cout << "SOH found!!! Count is now: " << countSOH << std::endl;
             
-            // When SOH is found, start a new vector for storing data
-            if (inDataSection && !currentVector.empty()) {
-                vectorOfVectors.push_back(currentVector);
-                currentVector.clear();
-            }
-            inDataSection = true;  // Start a new data section
-        } 
-        else if (c == EOT) {
-            countEOT++;
-            std::cout << "EOT found! Count is now: " << countEOT << std::endl;
+//             // When SOH is found, start a new vector for storing data
+//             if (inDataSection && !currentVector.empty()) {
+//                 vectorOfVectors.push_back(currentVector);
+//                 currentVector.clear();
+//             }
+//             inDataSection = true;  // Start a new data section
+//         } 
+//         else if (c == EOT) {
+//             countEOT++;
+//             std::cout << "EOT found! Count is now: " << countEOT << std::endl;
 
-            // When EOT is found, finalize the current vector and add it to the vector of vectors
-            if (inDataSection) {
-                vectorOfVectors.push_back(currentVector);
-                currentVector.clear();
-                inDataSection = false;  // End the data section
-            }
-        }
-        else {
-            // If it's not SOH or EOT, we assume it's part of the data, so add it to the current vector
-            if (inDataSection) {
-                currentVector.push_back(c);
-            }
-        }
-    }
+//             // When EOT is found, finalize the current vector and add it to the vector of vectors
+//             if (inDataSection) {
+//                 vectorOfVectors.push_back(currentVector);
+//                 currentVector.clear();
+//                 inDataSection = false;  // End the data section
+//             }
+//         }
+//         else {
+//             // If it's not SOH or EOT, we assume it's part of the data, so add it to the current vector
+//             if (inDataSection) {
+//                 currentVector.push_back(c);
+//             }
+//         }
+//     }
 
-// Handle the case where the last vector might not be followed by an EOT
-if (!currentVector.empty()) {
-    vectorOfVectors.push_back(currentVector);
-}
+// // Handle the case where the last vector might not be followed by an EOT
+// if (!currentVector.empty()) {
+//     vectorOfVectors.push_back(currentVector);
+// }
 
-    // Output the result for verification
-    std::cout << "Total vectors created: " << vectorOfVectors.size() << std::endl;
+//     // Output the result for verification
+//     std::cout << "Total vectors created: " << vectorOfVectors.size() << std::endl;
 
-    // Print the content of each vector in hexadecimal
-    for (size_t i = 0; i < vectorOfVectors.size(); ++i) {
-        std::cout << "Vector " << i + 1 << " in Hex: ";
-        for (char ch : vectorOfVectors[i]) {
-            // Print each character as a hexadecimal value
-            std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)(unsigned char)ch << " ";
-        }
-        std::cout << std::endl;
-    }
+//     // Print the content of each vector in hexadecimal
+//     for (size_t i = 0; i < vectorOfVectors.size(); ++i) {
+//         std::cout << "Vector " << i + 1 << " in Hex: ";
+//         for (char ch : vectorOfVectors[i]) {
+//             // Print each character as a hexadecimal value
+//             std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)(unsigned char)ch << " ";
+//         }
+//         std::cout << std::endl;
+//     }
 
 
     } 
