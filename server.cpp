@@ -248,11 +248,16 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
         std::cout << "Successfully connected to " << serverIp << ":" << serverPort << std::endl;
         logCommand("Successfully connected to " + serverIp + ":" + std::to_string(serverPort));
 
-        // Send HELO with SOH and EOT
-        std::string soh(0, SOH);
-        std::string eot(0, EOT);
-        std::string heloMsg = soh + "HELO,A5_30" + eot;
-        send(connectSock, heloMsg.c_str(), heloMsg.size(), 0);
+        // Construct the message with SOH (0x01), "HELO,A5_30", and EOT (0x04)
+        std::string message;
+        message += 0x01;  // Add SOH (0x01) to the start
+        message += "HELO,A5_30";  // Append the text
+        message += 0x04;  // Add EOT (0x04) to the end
+
+        // Send the message over the socket
+        send(connectSock, message.c_str(), message.size(), 0);
+
+        recv(connectSock, buffer, sizeof(buffer), 0);  // Receive response from the server
         // Receive response from the server and process it
         char recvBuffer[BUFFER_SIZE];
         int received = recv(connectSock, recvBuffer, sizeof(recvBuffer), 0);
