@@ -271,8 +271,6 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 
     std::vector<std::vector<char>> vectorOfVectors;  // Vector of vectors to hold each chunk between SOH and EOT
     std::vector<char> currentVector;                 // Current vector to hold characters between SOH and EOT
-
-    std::vector<char> currentVector;  // Current vector to hold characters between SOH and EOT
     bool inDataSection = false;       // Flag to indicate if we are in a data section
 
     for (char c : gustabuffer) {
