@@ -264,6 +264,8 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
         char gustabuffer[1025];
         int recived = recv(connectSock, gustabuffer, sizeof(gustabuffer), 0);
 
+        std::cout << "Received: " << recived << std::endl;
+
         if (recived > 0) {
             std::cout << "Received: " << gustabuffer << std::endl;
         }
