@@ -317,11 +317,10 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
     }
 
 
-
     } 
     else {
         // Handle failed connections or unknown commands
-        char response[256] = "Unknown or failed connection command.\n";
+        char response[5000] = "Unknown or failed connection command.\n";
         send(clientSocket, response, sizeof(response), 0);
         logCommand("CONNECT command failed or was unknown.");
     }
