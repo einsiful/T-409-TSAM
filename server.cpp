@@ -44,6 +44,7 @@
 #define BUFFER_SIZE 1024
 char SOH = 0x01;  // Start of Header (SOH)
 char EOT = 0x04;  // End of Transmission (EOT)
+char ESC = 0x1B;  // Escape character (ESC)
 
 // Simple class for handling connections from clients.
 //
@@ -72,6 +73,32 @@ std::map<std::string, std::vector<std::string>> messageCache;
 // Open socket for specified port.
 //
 // Returns -1 if unable to create the socket for any reason.
+
+
+
+std::vector<char> byteStuffing(const std::vector<char>& payload) {
+    std::vector<char> stuffedPayload;
+    for (char byte : payload) {
+        if (byte == SOH || byte == EOT || byte == ESC) {
+            stuffedPayload.push_back(ESC);
+        }
+        stuffedPayload.push_back(byte);
+    }
+    return stuffedPayload;
+}
+
+std::vector<char> byteUnstuffing(const std::vector<char>& stuffedPayload) {
+    std::vector<char> unstuffedPayload;
+    for (size_t i = 0; i < stuffedPayload.size(); ++i) {
+        if (stuffedPayload[i] == ESC && i + 1 < stuffedPayload.size()) {
+            ++i; // Skip the ESC and take the next byte as literal
+        }
+        unstuffedPayload.push_back(stuffedPayload[i]);
+    }
+    return unstuffedPayload;
+}
+
+
 
 // Logging function
 void logCommand(const std::string& logMessage) {
@@ -260,24 +287,35 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
         // Send command with SOH and EOT delimiters
         send(connectSock, command.c_str(), command.size(), 0);
 
-        char gustabuffer[1024];
-        int recived = recv(connectSock, gustabuffer, sizeof(gustabuffer), 0);
+        char gustabuffer[5000];
+        int received = recv(connectSock, gustabuffer, sizeof(gustabuffer), 0);
 
-        if (recived > 0) {
+        if (received > 0) {
             std::cout << "Received: " << gustabuffer << std::endl;
+
         }
+
+
+   // Convert gustabuffer to a vector<char> for processing
+    std::vector<char> payload(gustabuffer, gustabuffer + received);
+
+    // Apply byte stuffing
+    std::vector<char> stuffedPayload = byteStuffing(payload);
+
+    // Apply byte unstuffing
+    std::vector<char> unstuffedPayload = byteUnstuffing(stuffedPayload);
 
     int countSOH = 0, countEOT = 0;
 
     std::vector<std::vector<char>> vectorOfVectors;  // Vector of vectors to hold each chunk between SOH and EOT
     std::vector<char> currentVector;                 // Current vector to hold characters between SOH and EOT
-    bool inDataSection = false;       // Flag to indicate if we are in a data section
+    bool inDataSection = false;                      // Flag to indicate if we are in a data section
 
-    for (char c : gustabuffer) {
+    for (char c : unstuffedPayload) {
         if (c == SOH) {
             countSOH++;
             std::cout << "SOH found!!! Count is now: " << countSOH << std::endl;
-            
+
             // When SOH is found, start a new vector for storing data
             if (inDataSection && !currentVector.empty()) {
                 vectorOfVectors.push_back(currentVector);
@@ -295,7 +333,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
                 currentVector.clear();
                 inDataSection = false;  // End the data section
             }
-        }
+        } 
         else {
             // If it's not SOH or EOT, we assume it's part of the data, so add it to the current vector
             if (inDataSection) {
@@ -304,11 +342,10 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
         }
     }
 
-// Handle the case where the last vector might not be followed by an EOT
-if (!currentVector.empty()) {
-    vectorOfVectors.push_back(currentVector);
-}
-
+    // Handle the case where the last vector might not be followed by an EOT
+    if (!currentVector.empty()) {
+        vectorOfVectors.push_back(currentVector);
+    }
     // Output the result for verification
     std::cout << "Total vectors created: " << vectorOfVectors.size() << std::endl;
 
