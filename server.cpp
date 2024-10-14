@@ -247,30 +247,17 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
         std::cout << "Successfully connected to " << serverIp << ":" << serverPort << std::endl;
         logCommand("Successfully connected to " + serverIp + ":" + std::to_string(serverPort));
 
-        char gustabuffer[1024];
-        memset(gustabuffer, 0, sizeof(gustabuffer));  // Clear the buffer
-
-        std::string message = "HELO,A5_30";
-        std::string soh(1, SOH);  // SOH (0x01)
-        std::string eot(1, EOT);  // EOT (0x04)
-        std::string fullMessage = soh + message + eot;
-
-        // Copy the fullMessage into gustabuffer, ensuring no excess nulls
-        memcpy(gustabuffer, fullMessage.c_str(), fullMessage.size());
-
-        // Only send the exact number of bytes needed (fullMessage.size()), not the entire buffer
-        send(connectSock, gustabuffer, fullMessage.size(), 0);
-
-        int received = recv(connectSock, gustabuffer, sizeof(gustabuffer), 0);
-        
+        // Send HELO with SOH and EOT
+        std::string soh(1, SOH);
+        std::string eot(1, EOT);
+        std::string heloMsg = soh + "HELO,A5_30" + eot;
+        send(connectSock, heloMsg.c_str(), heloMsg.size(), 0);
+        // Receive response from the server and process it
+        char recvBuffer[BUFFER_SIZE];
+        int received = recv(connectSock, recvBuffer, sizeof(recvBuffer), 0);
         if (received > 0) {
-            std::cout << "Received: " << gustabuffer << std::endl;
-        } else if (received == 0) {
-            std::cerr << "Connection closed by server (recv() returned 0)." << std::endl;
-        } else {
-            // If there's an error during receiving
-            std::cerr << "Error on recv: " << strerror(errno) << std::endl;
-            logCommand("Error on recv: " + std::string(strerror(errno)));
+            std::string receivedMsg(recvBuffer, received);
+            std::cout << "Received: " << receivedMsg << std::endl;
         }
 
         close(connectSock);  // Close the socket once the communication is done
