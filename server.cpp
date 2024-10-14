@@ -41,7 +41,7 @@
 #endif
 
 #define BACKLOG  5          // Allowed length of queue of waiting connections
-#define BUFFER_SIZE 5000
+#define BUFFER_SIZE 1025
 char SOH = 0x01;  // Start of Header (SOH)
 char EOT = 0x04;  // End of Transmission (EOT)
 
@@ -171,25 +171,25 @@ std::string uppercase(std::string stringToUpper)
 }
 
 // TODO: LAGA!!!
-// std::vector<std::vector<std::string>> cmdParser(char* buffer, int clientSocket){
-//     std::vector<std::string> cmd_tokens;
-//     std::string bufferStr = buffer;
-//     cmd_tokens = messageSeperator(buffer, clientSocket);
+std::vector<std::vector<std::string>> cmdParser(char* buffer, int clientSocket){
+    std::vector<std::string> cmd_tokens;
+    std::string bufferStr = buffer;
+    cmd_tokens = messageSeperator(buffer, clientSocket);
 
-//     for (auto &cmd_token : cmd_tokens) {
-//         std::cout << "Cmd token:" << cmd_token << std::endl;
-//     }
+    for (auto &cmd_token : cmd_tokens) {
+        std::cout << "Cmd token:" << cmd_token << std::endl;
+    }
 
-//     std::vector<std::vector<std::string>> all_cmds;
-//     for (auto &cmd_token : cmd_tokens) {
-//         std::vector<std::string> tokens;
-//         std::vector<std::string> v_token;
-//         v_token.push_back(cmd_token);
-//         tokens = tokenizer(cmd_token, ',');
-//         all_cmds.push_back(tokens);
-//     }
-//     return all_cmds;
-// }
+    std::vector<std::vector<std::string>> all_cmds;
+    for (auto &cmd_token : cmd_tokens) {
+        std::vector<std::string> tokens;
+        std::vector<std::string> v_token;
+        v_token.push_back(cmd_token);
+        tokens = tokenizer(cmd_token, ',');
+        all_cmds.push_back(tokens);
+    }
+    return all_cmds;
+}
 
 // void fetch_messages(){
 
@@ -258,7 +258,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 
 
         // Send command with SOH and EOT delimiters
-        send(connectSock, command.c_str(), command.size(), 0);
+        send(clientSocket, command.c_str(), command.size(), 0);
 
         char gustabuffer[1025];
         int recived = recv(connectSock, gustabuffer, sizeof(gustabuffer), 0);
