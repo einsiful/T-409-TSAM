@@ -267,7 +267,9 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
             std::cout << "Received: " << gustabuffer << std::endl;
         }
 
-
+        // Send response to client
+        send(clientSocket, response.c_str(), response.size(), 0);
+        
 
 
 
