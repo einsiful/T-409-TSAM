@@ -296,7 +296,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
                 inDataSection = false;  // End the data section
             }
         } 
-        else if (c == '0x00') {
+        else if (c == '0') {
             // Ignore null characters
         }
         else {
