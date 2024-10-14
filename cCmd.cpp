@@ -9,4 +9,3 @@
 std::map<std::string, serverInfo> knownServers;
 std::map<std::string, std::vector<messageInfo>> messageCache;
 time_t keepTime = time(0);
-
