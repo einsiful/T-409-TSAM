@@ -198,29 +198,6 @@ std::vector<std::vector<std::string>> cmdParser(char* buffer, int clientSocket){
 // std::map<std::string, std::vector<std::string>> fetch_messages(Client ClientSocket, charbuffer)
 std::map<std::string, std::vector<std::string>> all_msgs;  // Store all messages
 // Function to process multiple SOH and EOT delimited messages in a buffer
-void processMessage(int sock, const std::string& buffer) {
-    size_t sohPos = 0;
-    size_t eotPos = 0;
-    
-    // Loop through the buffer and find multiple SOH-EOT pairs
-    while ((sohPos = buffer.find(SOH, eotPos)) != std::string::npos) {
-        eotPos = buffer.find(EOT, sohPos);
-        if (eotPos == std::string::npos) {
-            // If no EOT is found after SOH, we stop processing
-            break;
-        }
-        // Extract the message content between SOH and EOT
-        std::string content = buffer.substr(sohPos + 1, eotPos - sohPos - 1);
-        
-        // Store the message in all_msgs for debugging or further processing
-        all_msgs["received_messages"].push_back(content);
-        
-        // Log or print the message content
-        std::cout << "Received message: " << content << std::endl;
-        // Move to the next part of the buffer
-        eotPos++;  // Move past the current EOT for next search
-    }
-}
 // TODO: gera server password protected
 
 
@@ -281,7 +258,6 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
         int received = recv(connectSock, recvBuffer, sizeof(recvBuffer), 0);
         if (received > 0) {
             std::string receivedMsg(recvBuffer, received);
-            processMessage(connectSock, receivedMsg);  // Process SOH, EOT, and store in all_msgs
         }
 
         close(connectSock);  // Close the socket once the communication is done
