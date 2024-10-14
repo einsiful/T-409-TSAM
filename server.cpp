@@ -258,6 +258,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
         int received = recv(connectSock, recvBuffer, sizeof(recvBuffer), 0);
         if (received > 0) {
             std::string receivedMsg(recvBuffer, received);
+            std::cout << "Received: " << receivedMsg << std::endl;
         }
 
         close(connectSock);  // Close the socket once the communication is done
