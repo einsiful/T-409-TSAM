@@ -247,17 +247,19 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
         std::cout << "Successfully connected to " << serverIp << ":" << serverPort << std::endl;
         logCommand("Successfully connected to " + serverIp + ":" + std::to_string(serverPort));
 
-        // Send a HELO command to the server
-        std::string soh(1, SOH);  // SOH (0x01) character
-        std::string eot(1, EOT);  // EOT (0x04) character
-        std::string command = soh + "HELO,A5_30" + eot;
+        char gustabuffer[1024];
+        memset(gustabuffer, 0, sizeof(gustabuffer));  // Clear the buffer
 
-        // Send command with SOH and EOT delimiters
-        std::cout << "Sending command: " << command << std::endl;
-        send(connectSock, command.c_str(), command.size(), 0);
+        std::string message = "HELO,A5_30";
+        std::string soh(1, SOH);  // SOH (0x01)
+        std::string eot(1, EOT);  // EOT (0x04)
+        std::string fullMessage = soh + message + eot;
 
-        char gustabuffer[BUFFER_SIZE];
-        memset(gustabuffer, 0, sizeof(gustabuffer));
+        // Copy the fullMessage into gustabuffer, ensuring no excess nulls
+        memcpy(gustabuffer, fullMessage.c_str(), fullMessage.size());
+
+        // Only send the exact number of bytes needed (fullMessage.size()), not the entire buffer
+        send(connectSock, gustabuffer, fullMessage.size(), 0);
 
         int received = recv(connectSock, gustabuffer, sizeof(gustabuffer), 0);
         
