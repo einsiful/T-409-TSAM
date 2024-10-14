@@ -344,7 +344,7 @@ int main(int argc, char* argv[])
     int maxfds;                     // Passed to select() as max fd in set
     struct sockaddr_in client;
     socklen_t clientLen;
-    char buffer[1025];              // buffer for reading from clients
+    char buffer[5000];              // buffer for reading from clients
 
     if(argc != 2)
     {
