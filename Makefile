@@ -10,7 +10,7 @@ clean:
 	rm -f client tsamgroup30
 
 send:
- 	scp * einararn22_2024@130.208.246.249:~/T-409-TSAM
- 	scp Makefile einararn22_2024@130.208.246.249:~/T-409-TSAM
+# 	scp * einararn22_2024@130.208.246.249:~/T-409-TSAM
+# 	scp Makefile einararn22_2024@130.208.246.249:~/T-409-TSAM
 #	scp * danieli22_2024@130.208.246.249:~/T-409-TSAM
 #	scp Makefile danieli22_2024@130.208.246.249:~/T-409-TSAM
