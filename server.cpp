@@ -244,96 +244,43 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
             return;
         }
 
-        // If connection is successful, store server info (using a placeholder for `serverInfo`)
         std::cout << "Successfully connected to " << serverIp << ":" << serverPort << std::endl;
-
-        // Log connection success
         logCommand("Successfully connected to " + serverIp + ":" + std::to_string(serverPort));
 
-        // Respond to the client that connection is successful
-        std::string response = "Connected to server at " + serverIp + ":" + std::to_string(serverPort) + "\n";
+        // Send a HELO command to the server
         std::string soh(1, SOH);  // SOH (0x01) character
         std::string eot(1, EOT);  // EOT (0x04) character
         std::string command = soh + "HELO,A5_30" + eot;
-
 
         // Send command with SOH and EOT delimiters
         std::cout << "Sending command: " << command << std::endl;
         send(connectSock, command.c_str(), command.size(), 0);
 
-        char gustabuffer[1025];
-        int recived = recv(connectSock, gustabuffer, sizeof(gustabuffer), 0);
+        char gustabuffer[BUFFER_SIZE];
+        memset(gustabuffer, 0, sizeof(gustabuffer));
 
-        std::cout << "Received: " << recived << std::endl;
-
-        if (recived > 0) {
+        int received = recv(connectSock, gustabuffer, sizeof(gustabuffer), 0);
+        
+        if (received > 0) {
             std::cout << "Received: " << gustabuffer << std::endl;
+        } else if (received == 0) {
+            std::cerr << "Connection closed by server (recv() returned 0)." << std::endl;
+        } else {
+            // If there's an error during receiving
+            std::cerr << "Error on recv: " << strerror(errno) << std::endl;
+            logCommand("Error on recv: " + std::string(strerror(errno)));
         }
 
-    // int countSOH = 0, countEOT = 0;
-
-    // std::vector<std::vector<char>> vectorOfVectors;  // Vector of vectors to hold each chunk between SOH and EOT
-    // std::vector<char> currentVector;                 // Current vector to hold characters between SOH and EOT
-    // bool inDataSection = false;       // Flag to indicate if we are in a data section
-
-//     for (char c : gustabuffer) {
-//         if (c == SOH) {
-//             countSOH++;
-//             std::cout << "SOH found!!! Count is now: " << countSOH << std::endl;
-            
-//             // When SOH is found, start a new vector for storing data
-//             if (inDataSection && !currentVector.empty()) {
-//                 vectorOfVectors.push_back(currentVector);
-//                 currentVector.clear();
-//             }
-//             inDataSection = true;  // Start a new data section
-//         } 
-//         else if (c == EOT) {
-//             countEOT++;
-//             std::cout << "EOT found! Count is now: " << countEOT << std::endl;
-
-//             // When EOT is found, finalize the current vector and add it to the vector of vectors
-//             if (inDataSection) {
-//                 vectorOfVectors.push_back(currentVector);
-//                 currentVector.clear();
-//                 inDataSection = false;  // End the data section
-//             }
-//         }
-//         else {
-//             // If it's not SOH or EOT, we assume it's part of the data, so add it to the current vector
-//             if (inDataSection) {
-//                 currentVector.push_back(c);
-//             }
-//         }
-//     }
-
-// // Handle the case where the last vector might not be followed by an EOT
-// if (!currentVector.empty()) {
-//     vectorOfVectors.push_back(currentVector);
-// }
-
-//     // Output the result for verification
-//     std::cout << "Total vectors created: " << vectorOfVectors.size() << std::endl;
-
-//     // Print the content of each vector in hexadecimal
-//     for (size_t i = 0; i < vectorOfVectors.size(); ++i) {
-//         std::cout << "Vector " << i + 1 << " in Hex: ";
-//         for (char ch : vectorOfVectors[i]) {
-//             // Print each character as a hexadecimal value
-//             std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)(unsigned char)ch << " ";
-//         }
-//         std::cout << std::endl;
-//     }
-
-
+        close(connectSock);  // Close the socket once the communication is done
     } 
     else {
         // Handle failed connections or unknown commands
-        char response[1025] = "Unknown or failed connection command.\n";
+        char response[BUFFER_SIZE] = "Unknown or failed connection command.\n";
         send(clientSocket, response, sizeof(response), 0);
         logCommand("CONNECT command failed or was unknown.");
     }
 }
+
 
 
 int main(int argc, char* argv[])
