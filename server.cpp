@@ -260,7 +260,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
         // Send command with SOH and EOT delimiters
         send(connectSock, command.c_str(), command.size(), 0);
 
-        char gustabuffer[5000];
+        char gustabuffer[1024];
         int recived = recv(connectSock, gustabuffer, sizeof(gustabuffer), 0);
 
         if (recived > 0) {
