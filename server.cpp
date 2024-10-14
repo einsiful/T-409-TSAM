@@ -258,6 +258,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buf
 
 
         // Send command with SOH and EOT delimiters
+        std::cout << "Sending command: " << command << std::endl;
         send(connectSock, command.c_str(), command.size(), 0);
 
         char gustabuffer[1025];
