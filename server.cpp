@@ -1,386 +1,265 @@
-//
-// Simple chat server for TSAM-409
-//
-// Command line: ./chat_server 4000 
-//
-// Author: Jacky Mallett (jacky@ru.is)
-//
-#include <fstream>
-#include <stdio.h>
-#include <errno.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/types.h>
+#include "Server.h"
+#include "MessageHandler.h"
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <netinet/ip.h>
-#include <netinet/tcp.h>
-#include <netdb.h>
-#include <arpa/inet.h>
-#include <string.h>
-#include <algorithm>
-#include <map>
-#include <vector>
-#include <list>
-#include <iomanip>  // For std::hex and formatting
-
-#include <iostream>
-#include <sstream>
-#include <thread>
-#include <map>
-
 #include <unistd.h>
+#include <sstream>
+#include <iostream>
 
-#include "tokenizer.h"
-
-
-// fix SOCK_NONBLOCK for OSX
-#ifndef SOCK_NONBLOCK
-#include <fcntl.h>
-#define SOCK_NONBLOCK O_NONBLOCK
-#endif
-
-#define BACKLOG  5          // Allowed length of queue of waiting connections
-#define BUFFER_SIZE 1025
-char SOH = 0x01;  // Start of Header (SOH)
-char EOT = 0x04;  // End of Transmission (EOT)
-
-// Simple class for handling connections from clients.
-//
-// Client(int socket) - socket to send/receive traffic from client.
-class Client
+Server::Server(const std::string& port): logger("server_log.txt"), groupID("A5_30")
 {
-  public:
-    int sock;              // socket of client connection
-    std::string name;           // Limit length of name of client's user
 
-    Client(int socket) : sock(socket){} 
-
-    ~Client(){}            // Virtual destructor defined for base class
-};
-
-// Note: map is not necessarily the most efficient method to use here,
-// especially for a server with large numbers of simulataneous connections,
-// where performance is also expected to be an issue.
-//
-// Quite often a simple array can be used as a lookup table, 
-// (indexed on socket no.) sacrificing memory for speed.
-
-std::map<int, Client*> clients; // Lookup table for per Client information
-std::map<std::string, std::vector<std::string>> messageCache;
-
-// Open socket for specified port.
-//
-// Returns -1 if unable to create the socket for any reason.
-
-// Logging function
-void logCommand(const std::string& logMessage) {
-    std::ofstream logFile("server.log", std::ios::app);
-    time_t now = time(0);
-    logFile << "Timestamp: " << ctime(&now) << "Command: " << logMessage << std::endl;
-    logFile.close();
+    listenSock = socketHandler.setupListenSocket(std::stoi(port));
+    std::cout << "Server listening on port " << port << std::endl;
+    if (listenSock < 0) {
+        perror("Failed to setup listening socket");
+        exit(EXIT_FAILURE);
+    }
 }
 
-int open_socket(int portno)
-{
-   struct sockaddr_in sk_addr;   // address settings for bind()
-   int sock;                     // socket opened for this port
-   int set = 1;                  // for setsockopt
-
-   // Create socket for connection. Set to be non-blocking, so recv will
-   // return immediately if there isn't anything waiting to be read.
-#ifdef __APPLE__     
-   if((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-   {
-      perror("Failed to open socket");
-      return(-1);
-   }
-#else
-   if((sock = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0)) < 0)
-   {
-     perror("Failed to open socket");
-    return(-1);
-   }
-#endif
-
-   // Turn on SO_REUSEADDR to allow socket to be quickly reused after 
-   // program exit.
-
-   if(setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &set, sizeof(set)) < 0)
-   {
-      perror("Failed to set SO_REUSEADDR:");
-   }
-   set = 1;
-#ifdef __APPLE__     
-   if(setsockopt(sock, SOL_SOCKET, SOCK_NONBLOCK, &set, sizeof(set)) < 0)
-   {
-     perror("Failed to set SOCK_NOBBLOCK");
-   }
-#endif
-   memset(&sk_addr, 0, sizeof(sk_addr));
-
-   sk_addr.sin_family      = AF_INET;
-   sk_addr.sin_addr.s_addr = INADDR_ANY;
-   sk_addr.sin_port        = htons(portno);
-
-   // Bind to socket to listen for connections from clients
-
-   if(bind(sock, (struct sockaddr *)&sk_addr, sizeof(sk_addr)) < 0)
-   {
-      perror("Failed to bind to socket:");
-      return(-1);
-   }
-   else
-   {
-      return(sock);
-   }
+Server::~Server() {
+    for (auto& pair : clients) {
+        delete pair.second;
+    }
 }
 
-// Close a client's connection, remove it from the client list, and
-// tidy up select sockets afterwards.
+void Server::run() {
+    fd_set readSockets;
+    while (true) {
+        readSockets = socketHandler.openSockets;
+        int n = select(socketHandler.maxfds + 1, &readSockets, NULL, NULL, NULL);
 
-void closeClient(int clientSocket, fd_set *openSockets, int *maxfds)
-{
-
-     printf("Client closed connection: %d\n", clientSocket);
-
-     // If this client's socket is maxfds then the next lowest
-     // one has to be determined. Socket fd's can be reused by the Kernel,
-     // so there aren't any nice ways to do this.
-
-     close(clientSocket);      
-
-     if(*maxfds == clientSocket)
-     {
-        for(auto const& p : clients)
-        {
-            *maxfds = std::max(*maxfds, p.second->sock);
+        if (n < 0) {
+            perror("select failed");
+            exit(EXIT_FAILURE);
         }
-     }
 
-     // And remove from the list of open sockets.
-
-     FD_CLR(clientSocket, openSockets);
-
+        for (int x = 0; x <= socketHandler.maxfds; ++x) {
+            if (FD_ISSET(x, &readSockets)) {
+                if (x == listenSock) {
+                    acceptNewConnection();
+                } else {
+                    handleClientMessage(x);
+                }
+            }
+        }
+    }
 }
 
-std::string uppercase(std::string stringToUpper)
-{
-    std::transform(stringToUpper.begin(), stringToUpper.end(), stringToUpper.begin(), ::toupper);
-    return stringToUpper;
-}
+void Server::acceptNewConnection() {
+    int clientSock;
+    struct sockaddr_in client_addr;
+    socklen_t addrlen = sizeof(client_addr);
+    clientSock = accept(listenSock, (struct sockaddr*)&client_addr, &addrlen);
 
-// TODO: LAGA!!!
-std::vector<std::vector<std::string>> cmdParser(char* buffer, int clientSocket){
-    std::vector<std::string> cmd_tokens;
-    std::string bufferStr = buffer;
-    cmd_tokens = messageSeperator(buffer, clientSocket);
-
-    for (auto &cmd_token : cmd_tokens) {
-        std::cout << "Cmd token:" << cmd_token << std::endl;
+    if (clientSock < 0) {
+        perror("Failed to accept new connection");
+        return;
     }
 
-    std::vector<std::vector<std::string>> all_cmds;
-    for (auto &cmd_token : cmd_tokens) {
-        std::vector<std::string> tokens;
-        std::vector<std::string> v_token;
-        v_token.push_back(cmd_token);
-        tokens = tokenizer(cmd_token, ',');
-        all_cmds.push_back(tokens);
-    }
-    return all_cmds;
+    FD_SET(clientSock, &socketHandler.openSockets);
+    socketHandler.maxfds = std::max(socketHandler.maxfds, clientSock);
+
+    Client* newClient = new Client(clientSock);
+    clients[clientSock] = newClient;
+
+    std::cout << "Accepted new connection on socket " << clientSock << std::endl;
+
+    logger.log("Tag","Accepted new connection on socket " + std::to_string(clientSock));
 }
 
-// void fetch_messages(){
+void Server::handleClientMessage(int clientSock) {
+    std::string msg = receiveMessage(clientSock);
+    if (msg.empty()) {
+        std::cout << "Client on socket " << clientSock << " has disconnected" << std::endl;
 
-// }
+        socketHandler.closeClient(clientSock);
+        delete clients[clientSock];
+        clients.erase(clientSock);
+        return;
+    }
 
-// std::map<std::string, std::vector<std::string>> fetch_messages(Client ClientSocket, charbuffer)
-std::map<std::string, std::vector<std::string>> all_msgs;  // Store all messages
-// Function to process multiple SOH and EOT delimited messages in a buffer
-// TODO: gera server password protected
+    Client* client = clients[clientSock];
+    processCommand(client, msg);
+}
 
+void Server::processCommand(Client* client, const std::string& command) {
+    logger.log("Tag", "Received command: " + command);
 
-// Process command from client on the server
+    std::cout << "Processing command from client " << client->sock << ": " << command << std::endl;
 
-void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds, char *buffer) 
-{
-    std::string command(buffer);
+    // Tokenize command
+    std::vector<std::string> tokens;
+    std::stringstream ss(command);
     std::string token;
-    std::vector<std::string> tokens = tokenizer(command, ',');
 
-    // Check if the CONNECT command is received with the right number of arguments
-    if ((tokens[0].compare("CONNECT") == 0) && (tokens.size() == 3))  // Fix the size to 3 (CONNECT, IP, PORT)
-    {
-        std::string serverIp = tokens[1];   // IP of the server to connect to
-        int serverPort = std::stoi(tokens[2]);  // Convert port to integer
+    while (std::getline(ss, token, ',')) {
+        tokens.push_back(token);
+    }
 
-        // Create a new socket to connect to the given server
-        int connectSock = socket(AF_INET, SOCK_STREAM, 0);
-        if (connectSock < 0) {
-            perror("Failed to create socket");
-            logCommand("CONNECT failed to create socket");
-            return;
-        }
+    if (tokens.empty())
+        return;
 
-        // Setup server address struct
-        struct sockaddr_in serverAddr;
-        memset(&serverAddr, 0, sizeof(serverAddr));
-        serverAddr.sin_family = AF_INET;
-        serverAddr.sin_port = htons(serverPort);
-
-        // Convert IP address to binary form
-        if (inet_pton(AF_INET, serverIp.c_str(), &serverAddr.sin_addr) <= 0) {
-            perror("Invalid IP address");
-            logCommand("CONNECT invalid IP address: " + serverIp);
-            close(connectSock);
-            return;
-        }
-
-        // Attempt to connect to the server
-        if (connect(connectSock, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0) {
-            perror("Failed to connect to server");
-            logCommand("CONNECT failed to connect to server: " + serverIp + ":" + std::to_string(serverPort));
-            close(connectSock);
-            return;
-        }
-
-        std::cout << "Successfully connected to " << serverIp << ":" << serverPort << std::endl;
-        logCommand("Successfully connected to " + serverIp + ":" + std::to_string(serverPort));
-
-        // Send HELO with SOH and EOT
-        // std::string soh(1, SOH);
-        // std::string eot(1, EOT);
-        std::string heloMsg = SOH + "HELO,A5_30" + EOT;
-
-        std::cout << "Sending: " << heloMsg.c_str() << std::endl;
-        std::cout << "Size: " << heloMsg.size() << std::endl;
-        send(connectSock, heloMsg.c_str(), heloMsg.size(), 0);
-        // Receive response from the server and process it
-        char recvBuffer[BUFFER_SIZE];
-        int received = recv(connectSock, recvBuffer, sizeof(recvBuffer), 0);
-        if (received > 0) {
-            std::string receivedMsg(recvBuffer, received);
-            std::cout << "Received: " << receivedMsg << std::endl;
-        }
-
-        close(connectSock);  // Close the socket once the communication is done
-    } 
-    else {
-        // Handle failed connections or unknown commands
-        char response[BUFFER_SIZE] = "Unknown or failed connection command.\n";
-        send(clientSocket, response, sizeof(response), 0);
-        logCommand("CONNECT command failed or was unknown.");
+    if (tokens[0] == "HELO") {
+        handleHELO(client, tokens);
+    } else if (tokens[0] == "SERVERS") {
+        handleSERVERS(client);
+    } else if (tokens[0] == "CONNECT") {
+        handleCONNECT(client, tokens);
+    } else if (tokens[0] == "KEEPALIVE") {
+        handleKEEPALIVE(client, tokens);
+    } else if (tokens[0] == "GETMSGS") {
+        handleGETMSGS(client, tokens);
+    } else if (tokens[0] == "SENDMSG") {
+        handleSENDMSG(client, tokens);
+    } else if (tokens[0] == "STATUSREQ") {
+        handleSTATUSREQ(client);
+    } else if (tokens[0] == "STATUSRESP") {
+        handleSTATUSRESP(client, tokens);
+    } else {
+        logger.log("Tag", "Unknown command: " + tokens[0]);
     }
 }
 
-
-
-int main(int argc, char* argv[])
-{
-    bool finished;
-    int listenSock;                 // Socket for connections to server
-    int clientSock;                 // Socket of connecting client
-    fd_set openSockets;             // Current open sockets 
-    fd_set readSockets;             // Socket list for select()        
-    fd_set exceptSockets;           // Exception socket list
-    int maxfds;                     // Passed to select() as max fd in set
-    struct sockaddr_in client;
-    socklen_t clientLen;
-    char buffer[1025];              // buffer for reading from clients
-
-    if(argc != 2)
-    {
-        printf("Usage: chat_server <ip port>\n");
-        exit(0);
+// Implement command handlers...
+void Server::handleHELO(Client* client, const std::vector<std::string>& tokens) {
+    if (tokens.size() != 2) {
+        logger.log("Tag", "Invalid HELO command");
+        return;
     }
 
-    // Setup socket for server to listen to
+    client->name = tokens[1];
+    client->isServer = true;
 
-    listenSock = open_socket(atoi(argv[1])); 
-    printf("Listening on port: %d\n", atoi(argv[1]));
+    // Log the received HELO
+    logger.log("Tag", "Processed HELO from " + client->name);
 
-    if(listen(listenSock, BACKLOG) < 0)
-    {
-        printf("Listen failed on port %s\n", argv[1]);
-        exit(0);
-    }
-    else 
-    // Add listen socket to socket set we are monitoring
-    {
-        FD_ZERO(&openSockets);
-        FD_SET(listenSock, &openSockets);
-        maxfds = listenSock;
+    // Send SERVERS response
+    handleSERVERS(client);
+}
+
+void Server::handleCONNECT(Client* client, const std::vector<std::string>& tokens) {
+    if (tokens.size() != 3) {
+        logger.log("Tag", "Invalid CONNECT command");
+        return;
     }
 
-    finished = false;
+    logger.log("Tag", "Attempting to connect to " + tokens[1] + ":" + tokens[2]);
 
-    while(!finished)
-    {
-        // Get modifiable copy of readSockets
-        readSockets = exceptSockets = openSockets;
-        memset(buffer, 0, sizeof(buffer));
+    // Attempt to set up a client socket and connect to the server
+    int newSocket = socketHandler.setupClientSocket(tokens[1], std::stoi(tokens[2]));
 
-        // Look at sockets and see which ones have something to be read()
-        int n = select(maxfds + 1, &readSockets, NULL, &exceptSockets, NULL);
+    if (newSocket != -1) {
+        // Successfully connected, create a new Client object
+        Client* newServerClient = new Client(newSocket);
+        newServerClient->isServer = true;
+        clients[newSocket] = newServerClient;
 
-        if(n < 0)
-        {
-            perror("select failed - closing down\n");
-            finished = true;
-        }
-        else
-        {
-            // First, accept  any new connections to the server on the listening socket
-            if(FD_ISSET(listenSock, &readSockets))
-            {
-               clientSock = accept(listenSock, (struct sockaddr *)&client,
-                                   &clientLen);
-               printf("accept***\n");
-               // Add new client to the list of open sockets
-               FD_SET(clientSock, &openSockets);
+        // Send HELO to the newly connected server
+        std::string heloMessage = "HELO," + groupID;
+        sendMessage(newSocket, heloMessage);
+        logger.log("Tag", "Sent HELO to " + tokens[1] + ":" + tokens[2]);
 
-               // And update the maximum file descriptor
-               maxfds = std::max(maxfds, clientSock) ;
-
-               // create a new client to store information.
-               clients[clientSock] = new Client(clientSock);
-
-               // Decrement the number of sockets waiting to be dealt with
-               n--;
-
-               printf("Client connected on server: %d\n", clientSock);
-            }
-            // Now check for commands from clients
-            std::list<Client *> disconnectedClients;  
-            while(n-- > 0)
-            {
-               for(auto const& pair : clients)
-               {
-                  Client *client = pair.second;
-
-                  if(FD_ISSET(client->sock, &readSockets))
-                  {
-                      // recv() == 0 means client has closed connection
-                      if(recv(client->sock, buffer, sizeof(buffer), MSG_DONTWAIT) == 0)
-                      {
-                          disconnectedClients.push_back(client);
-                          closeClient(client->sock, &openSockets, &maxfds);
-
-                      }
-                      // We don't check for -1 (nothing received) because select()
-                      // only triggers if there is something on the socket for us.
-                      else
-                      {
-                          std::cout << buffer << std::endl;
-                          clientCommand(client->sock, &openSockets, &maxfds, buffer);
-                      }
-                  }
-               }
-               // Remove client from the clients list
-               for(auto const& c : disconnectedClients)
-                  clients.erase(c->sock);
-            }
-        }
+        // Wait for the SERVERS response
+        std::string response = receiveMessage(newSocket);
+        logger.log("Tag", "Received SERVERS response: " + response);
+    } else {
+        logger.log("Tag", "Failed to connect to " + tokens[1] + ":" + tokens[2]);
     }
+}
+
+// Handles GETMSGS command
+void Server::handleGETMSGS(Client* client, const std::vector<std::string>& tokens) {
+    if (tokens.size() < 2) {
+        logger.log("Error", "Invalid GETMSGS command received.");
+        return;
+    }
+
+    std::string groupID = tokens[1];
+
+    // Handle retrieving messages for the specified group (client's group ID)
+    // Placeholder: Implement message retrieval from storage
+    std::string response = "No messages available for group " + groupID;
+    sendMessage(client->sock, response);
+
+    logger.log("Tag", "Processed GETMSGS for group " + groupID);
+}
+
+// Handles SENDMSG command
+void Server::handleSENDMSG(Client* client, const std::vector<std::string>& tokens) {
+    if (tokens.size() < 3) {
+        logger.log("Tag", "Invalid SENDMSG command received.");
+        return;
+    }
+
+    std::string toGroupID = tokens[1];
+    std::string message = tokens[2];
+
+    // Handle sending message to another group
+    // Placeholder: Implement message forwarding or storage
+    logger.log("Tag", "Processed SENDMSG to group " + toGroupID + ": " + message);
+}
+
+// Handles SERVERS command
+void Server::handleSERVERS(Client* client) {
+    // Respond with a list of directly connected servers (1-hop servers)
+    // Placeholder: Implement server list generation
+    std::string response = "SERVERS," + groupID + ",130.208.246.249,4030;";
+    sendMessage(client->sock, response);
+
+    logger.log("Tag", "Processed SERVERS command");
+}
+
+// Handles KEEPALIVE command
+void Server::handleKEEPALIVE(Client* client, const std::vector<std::string>& tokens) {
+    if (tokens.size() < 2) {
+        logger.log("Tag", "Invalid KEEPALIVE command received.");
+        return;
+    }
+
+    // Handle the keepalive message
+    logger.log("Tag", "Received KEEPALIVE from client " + client->name);
+}
+
+// Handles STATUSREQ command
+void Server::handleSTATUSREQ(Client* client) {
+    // Respond with status of messages being held for other servers
+    // Placeholder: Implement status response
+    std::string response = "STATUSRESP,A5_30,10;";
+    sendMessage(client->sock, response);
+
+    logger.log("Tag", "Processed STATUSREQ command");
+}
+
+// Handles STATUSRESP command
+void Server::handleSTATUSRESP(Client* client, const std::vector<std::string>& tokens) {
+    if (tokens.size() < 2) {
+        logger.log("Tag", "Invalid STATUSRESP command received.");
+        return;
+    }
+
+    // Handle the status response message
+    logger.log("Tag", "Received STATUSRESP from client " + client->name);
+}
+
+void Server::sendMessage(int sock, const std::string& message) {
+    std::string framedMessage = frameMessage(message);  // Assuming you frame the message properly
+    ssize_t bytesSent = send(sock, framedMessage.c_str(), framedMessage.length(), 0);
+
+    if (bytesSent < 0) {
+        logger.log("Tag", "Failed to send message on socket " + std::to_string(sock) + ": " + strerror(errno));
+        perror("send failed");
+    } else {
+        logger.log("Tag", "Sent " + std::to_string(bytesSent) + " bytes on socket " + std::to_string(sock));
+    }
+}
+
+std::string Server::receiveMessage(int sock) {
+    char buffer[1024];
+    ssize_t bytesRead = recv(sock, buffer, sizeof(buffer), 0);
+    if (bytesRead <= 0) {
+        return "";
+    }
+    buffer[bytesRead] = '\0';
+    return parseFramedMessage(std::string(buffer));
 }
