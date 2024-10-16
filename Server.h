@@ -34,15 +34,20 @@ private:
     // Command handlers
     void handleHELO(Client* client, const std::vector<std::string>& tokens);
     void handleCONNECT(Client* client, const std::vector<std::string>& tokens);
-    void handleSERVERS(Client* client);
+    void handleSERVERS(Client* client, const std::vector<std::string>& tokens);
     void handleKEEPALIVE(Client* client, const std::vector<std::string>& tokens);
     void handleGETMSGS(Client* client, const std::vector<std::string>& tokens);
     void handleSENDMSG(Client* client, const std::vector<std::string>& tokens);
     void handleSTATUSREQ(Client* client);
     void handleSTATUSRESP(Client* client, const std::vector<std::string>& tokens);
 
+    // sending functions
+    void sendHELO(Client* client);
+    void sendSERVERS(Client* client);
+
     void sendMessage(int sock, const std::string& message);
     std::string receiveMessage(int sock);
+    std::string generateServerList(std::map<int, Client*> clients, SocketHandler& socketHandler);
 };
 
 #endif // SERVER_H

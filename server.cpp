@@ -5,6 +5,16 @@
 #include <unistd.h>
 #include <sstream>
 #include <iostream>
+#include <cstring>
+
+struct serverInfo{
+    std::string name;
+    std::string ip;
+    int port;
+};
+
+std::map<std::string, serverInfo> knownServers;
+
 
 Server::Server(const std::string& port): logger("server_log.txt"), groupID("A5_30")
 {
@@ -105,7 +115,7 @@ void Server::processCommand(Client* client, const std::string& command) {
     if (tokens[0] == "HELO") {
         handleHELO(client, tokens);
     } else if (tokens[0] == "SERVERS") {
-        handleSERVERS(client);
+        handleSERVERS(client, tokens);
     } else if (tokens[0] == "CONNECT") {
         handleCONNECT(client, tokens);
     } else if (tokens[0] == "KEEPALIVE") {
@@ -136,7 +146,7 @@ void Server::handleHELO(Client* client, const std::vector<std::string>& tokens) 
     logger.log("Tag", "Processed HELO from " + client->name);
 
     // Send SERVERS response
-    handleSERVERS(client);
+    sendSERVERS(client);
 }
 
 void Server::handleCONNECT(Client* client, const std::vector<std::string>& tokens) {
@@ -161,9 +171,6 @@ void Server::handleCONNECT(Client* client, const std::vector<std::string>& token
         sendMessage(newSocket, heloMessage);
         logger.log("Tag", "Sent HELO to " + tokens[1] + ":" + tokens[2]);
 
-        // Wait for the SERVERS response
-        std::string response = receiveMessage(newSocket);
-        logger.log("Tag", "Received SERVERS response: " + response);
     } else {
         logger.log("Tag", "Failed to connect to " + tokens[1] + ":" + tokens[2]);
     }
@@ -202,13 +209,22 @@ void Server::handleSENDMSG(Client* client, const std::vector<std::string>& token
 }
 
 // Handles SERVERS command
-void Server::handleSERVERS(Client* client) {
-    // Respond with a list of directly connected servers (1-hop servers)
-    // Placeholder: Implement server list generation
-    std::string response = "SERVERS," + groupID + ",130.208.246.249,4030;";
-    sendMessage(client->sock, response);
+void Server::handleSERVERS(Client* client, const std::vector<std::string>& tokens) {
+    // Get server list and add to client's known servers
+    // the format of the server string is as follows: SERVERS,A5 1,130.208.243.61,8888;A5 2,10.2.132.12,10042;
+    for (int i = 1; i < tokens.size(); i++) {
+        std::string server = tokens[i];
+        std::vector<std::string> serverInfo;
+        std::stringstream ss(server);
+        std::string token;
+        while (std::getline(ss, token, ',')) {
+            serverInfo.push_back(token);
+        }
+        knownServers[serverInfo[0]].name = serverInfo[0];
+        knownServers[serverInfo[0]].ip = serverInfo[1];
+        knownServers[serverInfo[0]].port = std::stoi(serverInfo[2]);
+    }
 
-    logger.log("Tag", "Processed SERVERS command");
 }
 
 // Handles KEEPALIVE command
@@ -243,6 +259,21 @@ void Server::handleSTATUSRESP(Client* client, const std::vector<std::string>& to
     logger.log("Tag", "Received STATUSRESP from client " + client->name);
 }
 
+// Sends a HELO message to the client
+void Server::sendHELO(Client* client) {
+    std::string heloMessage = "HELO," + groupID;
+    sendMessage(client->sock, heloMessage);
+}
+
+// Sends a SERVERS message to the client
+void Server::sendSERVERS(Client* client) {
+    // Placeholder: Implement server list generation
+    // std::string response = "SERVERS," + groupID + ",
+    //
+    std::string response = generateServerList(clients, socketHandler);
+    sendMessage(client->sock, response);
+}
+
 void Server::sendMessage(int sock, const std::string& message) {
     std::string framedMessage = frameMessage(message);  // Assuming you frame the message properly
     ssize_t bytesSent = send(sock, framedMessage.c_str(), framedMessage.length(), 0);
@@ -263,4 +294,23 @@ std::string Server::receiveMessage(int sock) {
     }
     buffer[bytesRead] = '\0';
     return parseFramedMessage(std::string(buffer));
+}
+
+std::string Server::generateServerList(std::map<int, Client *> clients, SocketHandler &socketHandler) {
+    // Generates the response to QUERYSERVERS i.e. SERVERS
+    std::string retStr;
+    retStr.append("\2SERVERS,"+ groupID + ',' + myIP + ',' + myPort + ';');
+    for (auto &pair: clients) {
+        std::string serverName = pair.second->name;
+        if (knownServers[serverName].name != "") {
+            retStr.append(knownServers[serverName].name);
+            retStr.append(",");
+            retStr.append(knownServers[serverName].ip);
+            retStr.append(",");
+            retStr.append(std::to_string(knownServers[serverName].port));
+            retStr.append(";");
+        }
+    }
+    retStr.append("\3");
+    return retStr;
 }

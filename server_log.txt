@@ -1,0 +1,28 @@
+[Wed Oct 16 10:29:44 2024] Tag: Accepted new connection on socket 6
+[Wed Oct 16 10:30:41 2024] Tag: Received command: CONNECT,130.208.246.249,4030
+[Wed Oct 16 10:30:41 2024] Tag: Attempting to connect to 130.208.246.249:4030
+[Wed Oct 16 10:30:41 2024] Tag: Sent 12 bytes on socket 7
+[Wed Oct 16 10:30:41 2024] Tag: Sent HELO to 130.208.246.249:4030
+[Wed Oct 16 10:30:41 2024] Tag: Received SERVERS response: SERVERS,A5_30,130.208.246.249,4030;
+[Wed Oct 16 11:30:51 2024] Tag: Accepted new connection on socket 6
+[Wed Oct 16 11:30:58 2024] Tag: Received command: CONNECT,130.208.246.249,5002
+[Wed Oct 16 11:30:58 2024] Tag: Attempting to connect to 130.208.246.249:5002
+[Wed Oct 16 11:30:58 2024] Tag: Sent 12 bytes on socket 7
+[Wed Oct 16 11:30:58 2024] Tag: Sent HELO to 130.208.246.249:5002
+[Wed Oct 16 11:30:58 2024] Tag: Received SERVERS response: HELO,Instr_2
+[Wed Oct 16 11:30:58 2024] Tag: Received command: SERVERS,Instr_2,130.208.246.249,5002;Instr_3,130.208.246.249,5003;A5_3,130.208.246.249,4003;Instr_1,130.208.246.249,5001;A5_30,130.208.240.15,-1;
+[Wed Oct 16 11:30:58 2024] Tag: Sent 37 bytes on socket 7
+[Wed Oct 16 11:30:58 2024] Tag: Processed SERVERS command
+[Wed Oct 16 11:32:25 2024] Tag: Received command: KEEPALIVE,0
+[Wed Oct 16 11:32:25 2024] Tag: Received KEEPALIVE from client 
+[Wed Oct 16 11:33:31 2024] Tag: Received command: KEEPALIVE,0
+[Wed Oct 16 11:33:31 2024] Tag: Received KEEPALIVE from client 
+[Wed Oct 16 11:34:43 2024] Tag: Accepted new connection on socket 6
+[Wed Oct 16 11:34:49 2024] Tag: Received command: CONNECT,130.208.246.249,5002
+[Wed Oct 16 11:34:49 2024] Tag: Attempting to connect to 130.208.246.249:5002
+[Wed Oct 16 11:34:49 2024] Tag: Sent 12 bytes on socket 7
+[Wed Oct 16 11:34:49 2024] Tag: Sent HELO to 130.208.246.249:5002
+[Wed Oct 16 11:34:49 2024] Tag: Received command: HELO,Instr_2
+[Wed Oct 16 11:34:49 2024] Tag: Processed HELO from Instr_2
+[Wed Oct 16 11:34:49 2024] Tag: Sent 38 bytes on socket 7
+[Wed Oct 16 11:34:49 2024] Tag: Received command: SERVERS,Instr_2,130.208.246.249,5002;Instr_3,130.208.246.249,5003;A5_3,130.208.246.249,4003;Instr_1,130.208.246.249,5001;A5_30,130.208.240.15,-1;
