@@ -211,19 +211,17 @@ void Server::handleSENDMSG(Client* client, const std::vector<std::string>& token
 // Handles SERVERS command
 void Server::handleSERVERS(Client* client, const std::vector<std::string>& tokens) {
     // Get server list and add to client's known servers
-    // the format of the server string is as follows: SERVERS,A5 1,130.208.243.61,8888;A5 2,10.2.132.12,10042;
+    // the format of the server string is as follows: SERVERS,A5_1,130.208.243.61,8888;A5_2,10.2.132.12,10042;
+    // split on every semicolon, and then comma, but exclude the SERVERS that comes first
+    std::string serverList = tokens[1];
+
     for (int i = 1; i < tokens.size(); i++) {
-        std::string server = tokens[i];
-        std::vector<std::string> serverInfo;
-        std::stringstream ss(server);
-        std::string token;
-        while (std::getline(ss, token, ',')) {
-            serverInfo.push_back(token);
-        }
-        knownServers[serverInfo[0]].name = serverInfo[0];
-        knownServers[serverInfo[0]].ip = serverInfo[1];
-        knownServers[serverInfo[0]].port = std::stoi(serverInfo[2]);
+        std::cout << "Server token: " << tokens[i] << std::endl;
     }
+    
+    std::cout << "Received server list from " << client->name << std::endl;
+    std::cout << "Servers: " << serverList << std::endl;
+    
 
 }
 
