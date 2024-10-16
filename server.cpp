@@ -8,6 +8,8 @@
 
 Server::Server(const std::string& port): logger("server_log.txt"), groupID("A5_30")
 {
+    myPort = port;
+    myIP = "130.208.240.15";
 
     listenSock = socketHandler.setupListenSocket(std::stoi(port));
     std::cout << "Server listening on port " << port << std::endl;
@@ -121,7 +123,6 @@ void Server::processCommand(Client* client, const std::string& command) {
     }
 }
 
-// Implement command handlers...
 void Server::handleHELO(Client* client, const std::vector<std::string>& tokens) {
     if (tokens.size() != 2) {
         logger.log("Tag", "Invalid HELO command");
